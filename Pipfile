@@ -9,6 +9,7 @@ jupyterlab = "*"
 datasets = "*"
 transformers = {extras = ["torch"], version = "*"}
 ipywidgets = "*"
+unsloth = {extras = ["colab-new"], version = "*"}
 
 [dev-packages]
 
