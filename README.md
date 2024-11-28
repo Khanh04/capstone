@@ -4,14 +4,6 @@ This project is a Large Language Model (LLM) chat bot designed to interact with 
 
 ---
 
-## Features
-
-- **Interactive Conversations**: The bot can handle user queries and generate contextual responses.
-- **Customizable**: Easily extendable for specific use cases or additional capabilities.
-- **Scalable Deployment**: Suitable for running on local machines or cloud platforms.
-
----
-
 ## Requirements
 
 - Python 3.9 or above
@@ -24,8 +16,8 @@ This project is a Large Language Model (LLM) chat bot designed to interact with 
 1. **Clone the repository**:
 
    ```bash
-   git clone <repository_url>
-   cd <repository_name>
+   git clone git@github.com:Khanh04/capstone.git
+   cd capstone
    ```
 
 2. **Install dependencies**:
