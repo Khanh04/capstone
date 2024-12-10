@@ -10,6 +10,10 @@ datasets = "*"
 transformers = {extras = ["torch"], version = "*"}
 ipywidgets = "*"
 unsloth = {extras = ["colab-new"], version = "*"}
+fastapi = "*"
+uvicorn = "*"
+llama-cpp-python = "*"
+pydantic = "*"
 
 [dev-packages]
 
