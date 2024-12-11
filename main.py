@@ -14,38 +14,68 @@ try:
 except Exception as e:
     raise RuntimeError(f"Failed to load model: {e}")
 
-# Request and response models
-class InferenceRequest(BaseModel):
-    prompt: str
+class Message(BaseModel):
+    role: str  # "system", "user", or "assistant"
+    content: str
+
+class ChatRequest(BaseModel):
+    model: str
+    messages: list[Message]
     max_tokens: int = 128
     temperature: float = 0.7
-    top_k: int = 40
     top_p: float = 0.9
+    frequency_penalty: float = 0.0
+    presence_penalty: float = 0.0
+    stop: list[str] | None = None
 
-class InferenceResponse(BaseModel):
-    generated_text: str
+class ChatResponseChoice(BaseModel):
+    index: int
+    message: Message
+    finish_reason: str
 
-@app.post("/inference", response_model=InferenceResponse)
-async def generate_text(request: InferenceRequest):
+class ChatResponse(BaseModel):
+    id: str
+    object: str
+    created: int
+    model: str
+    choices: list[ChatResponseChoice]
+
+@app.post("/v1/chat/completions", response_model=ChatResponse)
+async def chat_completions(request: ChatRequest):
     """
-    Endpoint for model inference.
+    OpenAI-compatible endpoint for chat completions.
     """
     try:
+        # Extract conversation history as prompt
+        prompt = "\n".join([f"{msg.role}: {msg.content}" for msg in request.messages])
+
+        # Generate response using LLaMA
         response = llama(
-            prompt=request.prompt,
+            prompt=prompt,
             max_tokens=request.max_tokens,
             temperature=request.temperature,
-            top_k=request.top_k,
             top_p=request.top_p,
+            stop=request.stop,
         )
         generated_text = response["choices"][0]["text"]
-        return InferenceResponse(generated_text=generated_text)
+
+        # Build response
+        assistant_message = Message(role="assistant", content=generated_text)
+        choice = ChatResponseChoice(index=0, message=assistant_message, finish_reason="stop")
+        return ChatResponse(
+            id="chatcmpl-unique-id",
+            object="chat.completion",
+            created=1234567890,
+            model=request.model,
+            choices=[choice],
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to the LLM Inference API!"}
+    return {"message": "SillyTavern-Compatible LLM API Running!"}
+
 
 if __name__ == "__main__":
     import uvicorn
