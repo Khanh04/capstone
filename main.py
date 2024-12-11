@@ -6,13 +6,11 @@ import os
 # Initialize FastAPI app
 app = FastAPI()
 
-# Load the model (adjust the path to your GGUF model)
-MODEL_PATH = "model/model.gguf"
-if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"Model file not found at {MODEL_PATH}")
-
 try:
-    llama = Llama(model_path=MODEL_PATH)
+    llama = Llama.from_pretrained(
+        repo_id="unsloth/Llama-3.2-1B-Instruct-GGUF",
+        filename="Llama-3.2-1B-Instruct-F16.gguf",
+    )
 except Exception as e:
     raise RuntimeError(f"Failed to load model: {e}")
 
@@ -48,3 +46,7 @@ async def generate_text(request: InferenceRequest):
 @app.get("/")
 def root():
     return {"message": "Welcome to the LLM Inference API!"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8001)))
