@@ -57,11 +57,15 @@ async def chat_completions(request: ChatRequest):
             top_p=request.top_p,
             stop=request.stop,
         )
-        generated_text = response["choices"][0]["text"]
+        print(f"Model response: {response}")
 
+        generated_text = response["choices"][0]["text"]
+        cleaned_text = generated_text.strip().lstrip("?\n").strip()
+        print(f"Generated text: {generated_text}")
         # Build response
-        assistant_message = Message(role="assistant", content=generated_text)
+        assistant_message = Message(role="assistant", content=cleaned_text)
         choice = ChatResponseChoice(index=0, message=assistant_message, finish_reason="stop")
+        print(f"Assistant message: {assistant_message}")
         return ChatResponse(
             id="chatcmpl-unique-id",
             object="chat.completion",
