@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from llama_cpp import Llama
+from transformers import BartForConditionalGeneration, BartTokenizer
+
 import os
 
 # Initialize FastAPI app
@@ -11,6 +13,8 @@ try:
         repo_id="unsloth/Llama-3.2-1B-Instruct-GGUF",
         filename="Llama-3.2-1B-Instruct-F16.gguf",
     )
+    bart_model = BartForConditionalGeneration.from_pretrained("facebook/bart-large-cnn")
+    bart_tokenizer = BartTokenizer.from_pretrained("facebook/bart-large-cnn")
 except Exception as e:
     raise RuntimeError(f"Failed to load model: {e}")
 
@@ -40,6 +44,13 @@ class ChatResponse(BaseModel):
     model: str
     choices: list[ChatResponseChoice]
 
+def summarize_with_bart(text: str):
+    inputs = bart_tokenizer.encode(text, return_tensors="pt", max_length=1024, truncation=True)
+    summary_ids = bart_model.generate(inputs, max_length=50, min_length=10, length_penalty=2.0, num_beams=4)
+    summary = bart_tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+    return summary
+
+
 @app.post("/v1/chat/completions", response_model=ChatResponse)
 async def chat_completions(request: ChatRequest):
     """
@@ -47,32 +58,36 @@ async def chat_completions(request: ChatRequest):
     """
     try:
         # Extract conversation history as prompt
-        prompt = "\n".join([f"{msg.role}: {msg.content}" for msg in request.messages])
+        prompt = "system: You are a helpful assistant.\n"
+        for msg in request.messages:
+            prompt += f"{msg.role}: {msg.content}\n"
+        prompt += "assistant:"
 
-        # Generate response using LLaMA
+        # Generate response from the model
         response = llama(
             prompt=prompt,
             max_tokens=request.max_tokens,
             temperature=request.temperature,
             top_p=request.top_p,
-            stop=request.stop,
+            stop=["user:", "assistant:"],  # Stop generating when roles appear
         )
-        print(f"Model response: {response}")
+        print(f"Raw model response: {response}")
 
-        generated_text = response["choices"][0]["text"]
-        cleaned_text = generated_text.strip().lstrip("?\n").strip()
-        print(f"Generated text: {generated_text}")
-        # Build response
-        assistant_message = Message(role="assistant", content=cleaned_text)
-        choice = ChatResponseChoice(index=0, message=assistant_message, finish_reason="stop")
+        # Extract the assistant's message
+        generated_text = summarize_with_bart(response["choices"][0]["text"].strip())
+
+        # Construct the assistant message
+        assistant_message = Message(role="assistant", content=generated_text)
         print(f"Assistant message: {assistant_message}")
+        # Return the response
+        choice = ChatResponseChoice(index=0, message=assistant_message, finish_reason="stop")
         return ChatResponse(
-            id="chatcmpl-unique-id",
+            id=response["id"],
             object="chat.completion",
-            created=1234567890,
+            created=response["created"],
             model=request.model,
             choices=[choice],
-        )
+        )    
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
